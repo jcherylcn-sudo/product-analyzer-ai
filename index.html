@@ -406,6 +406,8 @@
             const file = e.target.files[0];
             if (!file) return;
 
+            console.log('选择文件:', file.name, 'size:', file.size, 'type:', file.type);
+
             if (!file.type.includes('html') && !file.name.endsWith('.html')) {
                 showError('⚠️ 请选择 HTML 格式的文件');
                 return;
@@ -457,7 +459,9 @@
             clearError();
 
             try {
+                console.log('开始读取文件...');
                 const htmlContent = await file.text();
+                console.log('文件大小:', htmlContent.length);
 
                 if (!htmlContent || htmlContent.length < 100) {
                     showError('❌ HTML 文件内容不足');
@@ -466,22 +470,34 @@
 
                 const productLink = document.getElementById('productLink').value;
 
+                // 准备请求数据
+                const requestData = {
+                    htmlContent: htmlContent,
+                    productLink: productLink || '未提供',
+                    isHtmlMode: true
+                };
+
+                console.log('发送请求到 /api/analyze');
+                console.log('请求数据大小:', JSON.stringify(requestData).length);
+
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        htmlContent,
-                        productLink: productLink || '未提供',
-                        isHtmlMode: true
-                    })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
                 });
+
+                console.log('响应状态:', response.status);
 
                 if (!response.ok) {
                     const errorData = await response.json();
+                    console.error('API 错误:', errorData);
                     throw new Error(errorData.error || `错误: ${response.status}`);
                 }
 
                 const result = await response.json();
+                console.log('分析结果:', result);
 
                 if (!result.products || !Array.isArray(result.products)) {
                     throw new Error('返回数据格式错误');
@@ -491,6 +507,7 @@
                 renderResults();
                 document.getElementById('analysisSection').style.display = 'block';
                 document.getElementById('clearBtn').style.display = 'block';
+                showError('✅ 分析成功！');
 
             } catch (error) {
                 console.error('分析错误:', error);
@@ -604,6 +621,7 @@
             const errorDiv = document.getElementById('error');
             errorDiv.textContent = msg;
             errorDiv.style.display = 'block';
+            console.log('错误:', msg);
         }
 
         function clearError() {

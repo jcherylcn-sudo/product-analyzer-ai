@@ -3,13 +3,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { link, desc } = req.body;
+  const { links } = req.body;
 
-  if (!link || link.trim() === '') {
-    return res.status(400).json({ error: '请输入产品链接或描述' });
+  if (!links || !Array.isArray(links) || links.length === 0) {
+    return res.status(400).json({ error: '请输入至少一个产品链接' });
+  }
+
+  if (links.some(link => !link || link.trim() === '')) {
+    return res.status(400).json({ error: '所有链接都必须填写' });
   }
 
   try {
+    const linksText = links.map((link, index) => `产品${index + 1}: ${link}`).join('\n');
+
     const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
       method: 'POST',
       headers: {
@@ -22,30 +28,57 @@ export default async function handler(req, res) {
           messages: [
             {
               role: 'system',
-              content: `你是一位专业的产品经理和营销专家。请以JSON格式分析产品，返回以下结构（确保有效的JSON格式，不要添加任何额外文本）:
+              content: `你是一位专业的电商数据分析师。请基于提供的产品链接，分析每个产品的真实数据。
+返回严格的 JSON 格式，包含以下结构。所有数据必须基于真实可获取的信息或合理推断，确保准确性：
+
 {
-  "sellingPoints": ["卖点1", "卖点2", "卖点3", "卖点4", "卖点5"],
-  "scores": {
-    "product": 8.5,
-    "clarity": 8.0,
-    "competitive": 7.8,
-    "potential": 8.6
-  },
-  "scoreExplain": "总体评价...",
-  "strengths": ["优势1", "优势2", "优势3"],
-  "improvements": ["改进1", "改进2", "改进3"],
-  "strategy": "具体优化策略和建议..."
-}`
+  "products": [
+    {
+      "name": "产品名称",
+      "link": "链接",
+      "sellingPoints": ["卖点1", "卖点2", "卖点3", "卖点4", "卖点5"],
+      "reviews": {
+        "totalCount": 总评价数,
+        "distribution": {
+          "5star": { "count": 数量, "percentage": "百分比" },
+          "4star": { "count": 数量, "percentage": "百分比" },
+          "3star": { "count": 数量, "percentage": "百分比" },
+          "2star": { "count": 数量, "percentage": "百分比" },
+          "1star": { "count": 数量, "percentage": "百分比" }
+        },
+        "likes": ["用户喜欢1", "用户喜欢2", "用户喜欢3"],
+        "dislikes": ["用户吐槽1", "用户吐槽2", "用户吐槽3"]
+      },
+      "parameters": {
+        "price": "价格",
+        "sales": "销量",
+        "shippingFee": "运费",
+        "returnPolicy": "退货政策",
+        "warranty": "保修信息",
+        "material": "材质/规格",
+        "weight": "重量",
+        "dimensions": "尺寸"
+      }
+    }
+  ],
+  "suggestions": "基于所有产品数据的综合优化建议"
+}
+
+注意：
+1. 所有数据必须真实、客观、准确
+2. 评价分布要合理（所有百分比之和=100%）
+3. 用户喜欢和吐槽的点要真实反映市场反馈
+4. 参数必须是实际可获得的数据，如果无法确定则标记为"暂无信息"`
             },
             {
               role: 'user',
-              content: `分析这个产品：\n链接/名称: ${link}\n描述: ${desc || '无'}`
+              content: `请分析以下产品链接的真实数据并返回 JSON 格式：\n\n${linksText}`
             }
           ]
         },
         parameters: {
           temperature: 0.7,
-          max_tokens: 1500,
+          max_tokens: 2000,
           top_p: 0.8,
           repetition_penalty: 1.0
         }
@@ -61,8 +94,6 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    
-    // 阿里云的响应格式不同！
     const content = data.output?.text || data.output?.content || data.choices?.[0]?.message?.content;
 
     if (!content) {
@@ -74,7 +105,6 @@ export default async function handler(req, res) {
     try {
       parsed = JSON.parse(content);
     } catch (e) {
-      // 如果 JSON 格式不完整，尝试提取
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsed = JSON.parse(jsonMatch[0]);

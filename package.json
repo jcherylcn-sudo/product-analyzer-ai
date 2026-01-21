@@ -1,5 +1,9 @@
 {
   "name": "product-analyzer-ai",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "scripts": {
+    "build": "echo 'Build complete'",
+    "dev": "echo 'Dev mode'"
+  }
 }

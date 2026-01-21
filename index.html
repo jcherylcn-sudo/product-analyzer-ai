@@ -64,19 +64,6 @@
             line-height: 1.6;
         }
 
-        .instruction-box strong {
-            display: block;
-            margin-bottom: 8px;
-        }
-
-        .instruction-box ol {
-            margin-left: 20px;
-        }
-
-        .instruction-box li {
-            margin-bottom: 5px;
-        }
-
         .form-group {
             margin-bottom: 15px;
         }
@@ -89,31 +76,48 @@
             font-size: 14px;
         }
 
-        .form-group label .required {
+        .form-group .required {
             color: red;
         }
 
-        .file-input-wrapper {
-            display: flex;
-            align-items: center;
+        .file-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 10px;
-            flex-wrap: wrap;
+            margin-top: 10px;
         }
 
-        .file-input-wrapper input {
+        .file-item {
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .file-item .name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             flex: 1;
-            min-width: 200px;
+        }
+
+        .file-item .remove {
+            margin-left: 8px;
+            cursor: pointer;
+            color: red;
+            font-weight: bold;
+        }
+
+        .form-group input[type="file"] {
             padding: 10px;
             border: 2px solid #ddd;
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-        }
-
-        .file-helper {
-            font-size: 13px;
-            color: green;
-            font-weight: bold;
         }
 
         .form-group input[type="text"] {
@@ -124,13 +128,6 @@
             font-size: 14px;
         }
 
-        .form-group small {
-            color: #999;
-            margin-top: 5px;
-            display: block;
-            font-size: 12px;
-        }
-
         .error {
             padding: 12px;
             background-color: #fff2f0;
@@ -139,7 +136,6 @@
             margin-bottom: 15px;
             border: 1px solid #ffccc7;
             font-size: 13px;
-            line-height: 1.5;
         }
 
         .success {
@@ -191,7 +187,7 @@
             border: 1px solid #ddd;
         }
 
-        .btn-secondary:hover:not(:disabled) {
+        .btn-secondary:hover {
             background-color: #e0e0e0;
         }
 
@@ -254,10 +250,7 @@
         .product-card p {
             margin-bottom: 10px;
             color: #666;
-        }
-
-        .product-card strong {
-            color: #333;
+            font-size: 13px;
         }
 
         .product-card ul {
@@ -268,16 +261,17 @@
         .product-card li {
             margin-bottom: 5px;
             color: #666;
+            font-size: 13px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         th {
-            padding: 12px;
+            padding: 10px;
             text-align: left;
             font-weight: bold;
             border-bottom: 2px solid #ddd;
@@ -285,7 +279,7 @@
         }
 
         td {
-            padding: 10px 12px;
+            padding: 10px;
             border-bottom: 1px solid #eee;
         }
 
@@ -304,31 +298,17 @@
         </header>
 
         <div class="upload-section">
-            <h2>📤 上传页面 HTML</h2>
+            <h2>📤 上传页面 HTML 文件</h2>
             
             <div class="instruction-box">
-                <strong>📌 如何获取页面 HTML:</strong>
-                <ol>
-                    <li>打开 Shopee 产品页面</li>
-                    <li>右键 → 选择 "Save page as" 或 "另存为"</li>
-                    <li>格式选择 "Webpage, HTML only" 或 "网页, 仅 HTML"</li>
-                    <li>保存文件（如：product.html）</li>
-                    <li>在下方选择此文件上传</li>
-                </ol>
+                <strong>📌 支持多文件上传对比！</strong>
+                <p>可上传 1-5 个 HTML 文件进行产品对比分析</p>
             </div>
 
             <div class="form-group">
-                <label>1. 选择页面 HTML 文件 <span class="required">*</span></label>
-                <div class="file-input-wrapper">
-                    <input type="file" id="htmlFile" accept=".html,text/html" />
-                    <span id="fileName" class="file-helper" style="display: none;"></span>
-                </div>
-                <small>最大: 10MB</small>
-            </div>
-
-            <div class="form-group">
-                <label>2. 产品链接（可选）</label>
-                <input type="text" id="productLink" placeholder="https://shopee.com.my/product..." />
+                <label>选择 HTML 文件 <span class="required">*</span> （可多选）</label>
+                <input type="file" id="htmlFiles" accept=".html,text/html" multiple />
+                <div id="fileList" class="file-list"></div>
             </div>
 
             <div id="message" style="display: none;"></div>
@@ -356,45 +336,42 @@
 
     <script>
         let products = [];
+        let selectedFiles = [];
 
-        document.getElementById('htmlFile').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            console.log('✅ 文件选择事件触发');
+        document.getElementById('htmlFiles').addEventListener('change', (e) => {
+            selectedFiles = Array.from(e.target.files);
+            console.log(`选择了 ${selectedFiles.length} 个文件`);
             
-            if (!file) {
-                console.log('❌ 没有选择文件');
-                return;
-            }
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = selectedFiles.map((file, idx) => `
+                <div class="file-item">
+                    <span class="name">${file.name}</span>
+                    <span class="remove" onclick="removeFile(${idx})">✕</span>
+                </div>
+            `).join('');
 
-            console.log('📄 文件信息:', { name: file.name, size: file.size, type: file.type });
-
-            if (!file.type.includes('html') && !file.name.endsWith('.html')) {
-                showError('⚠️ 请选择 HTML 格式的文件');
-                return;
-            }
-
-            if (file.size > 10 * 1024 * 1024) {
-                showError('⚠️ 文件过大（超过 10MB）');
-                return;
-            }
-
-            document.getElementById('fileName').textContent = `✅ ${file.name}`;
-            document.getElementById('fileName').style.display = 'inline';
             clearMessage();
-            console.log('✅ 文件验证通过');
         });
 
-        document.getElementById('analyzeBtn').addEventListener('click', () => {
-            console.log('🔘 点击分析按钮');
-            analyzeFile();
-        });
+        window.removeFile = function(idx) {
+            selectedFiles.splice(idx, 1);
+            document.getElementById('htmlFiles').value = '';
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = selectedFiles.map((file, i) => `
+                <div class="file-item">
+                    <span class="name">${file.name}</span>
+                    <span class="remove" onclick="removeFile(${i})">✕</span>
+                </div>
+            `).join('');
+        };
+
+        document.getElementById('analyzeBtn').addEventListener('click', analyzeFiles);
 
         document.getElementById('clearBtn').addEventListener('click', () => {
-            console.log('🔘 点击清除按钮');
             products = [];
-            document.getElementById('htmlFile').value = '';
-            document.getElementById('productLink').value = '';
-            document.getElementById('fileName').style.display = 'none';
+            selectedFiles = [];
+            document.getElementById('htmlFiles').value = '';
+            document.getElementById('fileList').innerHTML = '';
             document.getElementById('analysisSection').style.display = 'none';
             document.getElementById('clearBtn').style.display = 'none';
             clearMessage();
@@ -409,82 +386,82 @@
             });
         });
 
-        async function analyzeFile() {
-            const file = document.getElementById('htmlFile').files[0];
-            
-            if (!file) {
-                console.log('❌ 未选择文件');
-                showError('❌ 请先上传页面 HTML 文件');
+        async function analyzeFiles() {
+            if (selectedFiles.length === 0) {
+                showError('❌ 请先选择至少 1 个 HTML 文件');
                 return;
             }
 
-            console.log('📖 开始读取文件...');
+            if (selectedFiles.length > 5) {
+                showError('❌ 最多只能上传 5 个文件');
+                return;
+            }
+
+            console.log(`开始分析 ${selectedFiles.length} 个文件...`);
             document.getElementById('analyzeBtn').disabled = true;
             document.getElementById('analyzeBtn').textContent = '⏳ 分析中...';
             clearMessage();
 
-            try {
-                const htmlContent = await file.text();
-                console.log('✅ 文件读取完成，大小:', htmlContent.length, '字节');
+            products = [];
 
-                if (!htmlContent || htmlContent.length < 100) {
-                    showError('❌ HTML 文件内容不足');
-                    return;
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                console.log(`分析文件 ${i + 1}/${selectedFiles.length}: ${file.name}`);
+                showMessage(`📊 正在分析第 ${i + 1}/${selectedFiles.length} 个文件...`);
+
+                try {
+                    const htmlContent = await file.text();
+
+                    if (!htmlContent || htmlContent.length < 100) {
+                        console.warn(`文件 ${file.name} 内容过短`);
+                        continue;
+                    }
+
+                    const response = await fetch('/api/analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            htmlContent: htmlContent,
+                            productLink: file.name,
+                            isHtmlMode: true
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `错误: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    console.log(`文件 ${file.name} 解析成功:`, result);
+
+                    if (result.products && Array.isArray(result.products)) {
+                        products.push(...result.products);
+                    }
+
+                } catch (error) {
+                    console.error(`文件 ${file.name} 分析失败:`, error.message);
+                    showError(`⚠️ 文件 ${file.name} 分析失败: ${error.message}`);
                 }
+            }
 
-                const productLink = document.getElementById('productLink').value;
-                console.log('📮 准备发送请求...');
-                console.log('   - htmlContent 长度:', htmlContent.length);
-                console.log('   - productLink:', productLink || '未提供');
-
-                const requestData = {
-                    htmlContent: htmlContent,
-                    productLink: productLink || '未提供',
-                    isHtmlMode: true
-                };
-
-                console.log('📤 发送 POST 请求到 /api/analyze');
-
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestData)
-                });
-
-                console.log('📥 收到响应，状态码:', response.status);
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.log('❌ API 错误:', errorData);
-                    throw new Error(errorData.error || `错误: ${response.status}`);
-                }
-
-                const result = await response.json();
-                console.log('✅ 解析成功，产品数量:', result.products?.length || 0);
-
-                if (!result.products || !Array.isArray(result.products)) {
-                    throw new Error('返回数据格式错误');
-                }
-
-                products = result.products;
+            if (products.length > 0) {
+                console.log(`成功分析 ${products.length} 个产品`);
                 renderResults();
                 document.getElementById('analysisSection').style.display = 'block';
                 document.getElementById('clearBtn').style.display = 'block';
-                showSuccess('✅ 分析成功！');
-
-            } catch (error) {
-                console.error('❌ 错误:', error.message);
-                showError(`❌ 分析失败: ${error.message}`);
-            } finally {
-                document.getElementById('analyzeBtn').disabled = false;
-                document.getElementById('analyzeBtn').textContent = '▶️ 开始分析';
+                showSuccess(`✅ 分析完成！识别了 ${products.length} 个产品`);
+            } else {
+                showError('❌ 未能识别到产品数据，请确保 HTML 文件完整');
             }
+
+            document.getElementById('analyzeBtn').disabled = false;
+            document.getElementById('analyzeBtn').textContent = '▶️ 开始分析';
         }
 
         function renderResults() {
-            document.getElementById('selling').innerHTML = products.map((p) => `
+            // 卖点分析
+            document.getElementById('selling').innerHTML = products.length > 0 ? products.map((p) => `
                 <div class="product-card">
                     <h3>${p.name || '产品'}</h3>
                     <p><strong>类别：</strong> ${p.category || '未知'}</p>
@@ -493,9 +470,10 @@
                         <ul>${p.sellingPoints.map(point => `<li>${point}</li>`).join('')}</ul>
                     ` : '<p style="color: #999;">暂无卖点数据</p>'}
                 </div>
-            `).join('');
+            `).join('') : '<div class="empty-message">暂无数据</div>';
 
-            document.getElementById('reviews').innerHTML = products.map((p) => {
+            // 评价分布
+            document.getElementById('reviews').innerHTML = products.length > 0 ? products.map((p) => {
                 const dist = p.reviews?.distribution || {};
                 return `
                     <div class="product-card">
@@ -503,24 +481,17 @@
                         <p><strong>总评价数：</strong> ${p.reviews?.totalCount || 0}</p>
                         ${Object.keys(dist).length > 0 ? `
                             <table>
-                                <tr>
-                                    <th>星级</th>
-                                    <th>数量</th>
-                                    <th>百分比</th>
-                                </tr>
+                                <tr><th>星级</th><th>数量</th><th>百分比</th></tr>
                                 ${Object.entries(dist).map(([star, data]) => `
-                                    <tr>
-                                        <td>${star}</td>
-                                        <td>${data.count || 0}</td>
-                                        <td>${data.percentage || '0%'}</td>
-                                    </tr>
+                                    <tr><td>${star}</td><td>${data.count || 0}</td><td>${data.percentage || '0%'}</td></tr>
                                 `).join('')}
                             </table>
                         ` : '<p style="color: #999;">暂无评价数据</p>'}
                     </div>
                 `;
-            }).join('');
+            }).join('') : '<div class="empty-message">暂无数据</div>';
 
+            // 参数对比表
             if (products.length > 1) {
                 const allParams = new Set();
                 products.forEach(p => {
@@ -543,7 +514,19 @@
                 document.getElementById('parameters').innerHTML = '<div class="empty-message">需要至少 2 个产品进行对比</div>';
             }
 
-            document.getElementById('suggestions').innerHTML = products[0]?.suggestions ? `<div class="product-card"><h3>💡 建议</h3><p>${products[0].suggestions}</p></div>` : '<div class="empty-message">暂无建议</div>';
+            // 建议
+            const allSuggestions = products
+                .filter(p => p.suggestions)
+                .map(p => `<div class="product-card"><h3>${p.name}</h3><p>${p.suggestions}</p></div>`)
+                .join('');
+            document.getElementById('suggestions').innerHTML = allSuggestions || '<div class="empty-message">暂无建议</div>';
+        }
+
+        function showMessage(msg) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = '';
+            messageDiv.textContent = msg;
+            messageDiv.style.display = 'block';
         }
 
         function showError(msg) {
@@ -563,8 +546,6 @@
         function clearMessage() {
             document.getElementById('message').style.display = 'none';
         }
-
-        console.log('✅ 页面初始化完成，等待用户操作...');
     </script>
 </body>
 </html>

@@ -1,190 +1,570 @@
-export default async function handler(req, res) {
-  console.log('收到请求，方法:', req.method);
-  console.log('请求体大小:', JSON.stringify(req.body).length);
-  console.log('请求体字段:', Object.keys(req.body));
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 产品对比分析工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: '只支持 POST 请求' });
-  }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
 
-  const { htmlContent, productLink, isHtmlMode, links } = req.body;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
 
-  console.log('isHtmlMode:', isHtmlMode);
-  console.log('htmlContent 长度:', htmlContent ? htmlContent.length : 'null');
-  console.log('productLink:', productLink);
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #1890ff;
+        }
 
-  // 检查是否是 HTML 模式
-  if (isHtmlMode && htmlContent) {
-    console.log('进入 HTML 模式');
+        header h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
 
-    if (!htmlContent || typeof htmlContent !== 'string' || htmlContent.length < 100) {
-      console.log('HTML 内容验证失败');
-      return res.status(400).json({ error: 'HTML 内容无效或过短' });
-    }
+        header p {
+            color: #666;
+            font-size: 14px;
+        }
 
-    const htmlTruncated = htmlContent.substring(0, 50000);
+        .upload-section {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
 
-    const analysisContent = `用户已下载页面的完整 HTML 源代码。请从下面的页面源代码中准确提取产品数据：
+        .upload-section h2 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+        }
 
-**页面链接**: ${productLink || '未提供'}
+        .instruction-box {
+            background-color: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
 
-**页面源代码**:
-\`\`\`html
-${htmlTruncated}
-\`\`\`
+        .instruction-box strong {
+            display: block;
+            margin-bottom: 8px;
+        }
 
-**重要提示**: 所有数据必须来自上面的页面源代码中明确显示的内容。
-- 页面显示"20,000Pa"就提取"20,000Pa"，不能改
-- 页面显示"322"就是 322，不能改
-- 无法找到的数据标注"[页面未标注]"`;
+        .instruction-box ol {
+            margin-left: 20px;
+        }
 
-    try {
-      console.log('正在调用阿里云百炼 API...');
+        .instruction-box li {
+            margin-bottom: 5px;
+        }
 
-      const response = await fetch(
-        'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'qwen-plus',
-            input: {
-              messages: [
-                {
-                  role: 'system',
-                  content: `你是专业的电商数据分析师。请从提供的产品信息中准确提取以下数据：
+        .form-group {
+            margin-bottom: 15px;
+        }
 
-1. 产品名称和具体类别
-2. 规格参数（8-10 个关键参数）
-3. 评价统计（总数、各等级数量和百分比）
-4. 用户评论摘要（正面 3 个词、负面 3 个词）
-5. 产品卖点（5 个主要卖点）
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
 
-**严格规则**:
-- 页面显示的数字必须准确复制，不能修改
-- 无法找到的数据必须标注"[页面未标注]"
-- 评价百分比必须加和 = 100%
-- 返回必须是有效 JSON
+        .form-group label .required {
+            color: red;
+        }
 
-**返回格式**:
-{
-  "products": [
-    {
-      "name": "产品名称",
-      "category": "类别",
-      "sellingPoints": ["卖点1", "卖点2", "卖点3", "卖点4", "卖点5"],
-      "reviews": {
-        "totalCount": 评价总数,
-        "distribution": {
-          "5star": { "count": 数字, "percentage": "百分比" },
-          "4star": { "count": 数字, "percentage": "百分比" },
-          "3star": { "count": 数字, "percentage": "百分比" },
-          "2star": { "count": 数字, "percentage": "百分比" },
-          "1star": { "count": 数字, "percentage": "百分比" }
-        },
-        "likes": ["词1", "词2", "词3"],
-        "dislikes": ["词1", "词2", "词3"]
-      },
-      "parameters": {
-        "参数1": "值",
-        "参数2": "值",
-        "参数3": "值",
-        "参数4": "值",
-        "参数5": "值",
-        "参数6": "值",
-        "参数7": "值",
-        "参数8": "值"
-      }
-    }
-  ],
-  "comparisonInsights": {
-    "优势对比": "分析",
-    "劣势提醒": "分析",
-    "适用场景": "分析",
-    "采购建议": "分析"
-  },
-  "suggestions": "综合建议"
-}`
-                },
-                {
-                  role: 'user',
-                  content: analysisContent
-                }
-              ]
-            },
-            parameters: {
-              temperature: 0.3,
-              max_tokens: 3000,
-              top_p: 0.8,
-              repetition_penalty: 1.0
+        .file-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .file-helper {
+            font-size: 13px;
+            color: green;
+            font-weight: bold;
+        }
+
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group small {
+            color: #999;
+            margin-top: 5px;
+            display: block;
+            font-size: 12px;
+        }
+
+        .error {
+            padding: 12px;
+            background-color: #fff2f0;
+            color: #d32f2f;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #ffccc7;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .success {
+            padding: 12px;
+            background-color: #f6ffed;
+            color: #52c41a;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #b7eb8f;
+            font-size: 13px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background-color: #1890ff;
+            color: #fff;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #0050b3;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #e0e0e0;
+        }
+
+        .analysis-section {
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+            background-color: #fafafa;
+            flex-wrap: wrap;
+        }
+
+        .tabs button {
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            flex: 0 0 auto;
+        }
+
+        .tabs button.active {
+            border-bottom: 3px solid #1890ff;
+            color: #1890ff;
+            font-weight: bold;
+        }
+
+        .tabs button:not(.active) {
+            color: #666;
+        }
+
+        .tab-content {
+            padding: 20px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .product-card {
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+
+        .product-card h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .product-card p {
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        .product-card strong {
+            color: #333;
+        }
+
+        .product-card ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .product-card li {
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+            background-color: #fafafa;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 产品对比分析工具</h1>
+            <p>基于阿里云百炼 AI | HTML 本地分析模式</p>
+        </header>
+
+        <div class="upload-section">
+            <h2>📤 上传页面 HTML</h2>
+            
+            <div class="instruction-box">
+                <strong>📌 如何获取页面 HTML:</strong>
+                <ol>
+                    <li>打开 Shopee 产品页面</li>
+                    <li>右键 → 选择 "Save page as" 或 "另存为"</li>
+                    <li>格式选择 "Webpage, HTML only" 或 "网页, 仅 HTML"</li>
+                    <li>保存文件（如：product.html）</li>
+                    <li>在下方选择此文件上传</li>
+                </ol>
+            </div>
+
+            <div class="form-group">
+                <label>1. 选择页面 HTML 文件 <span class="required">*</span></label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="htmlFile" accept=".html,text/html" />
+                    <span id="fileName" class="file-helper" style="display: none;"></span>
+                </div>
+                <small>最大: 10MB</small>
+            </div>
+
+            <div class="form-group">
+                <label>2. 产品链接（可选）</label>
+                <input type="text" id="productLink" placeholder="https://shopee.com.my/product..." />
+            </div>
+
+            <div id="message" style="display: none;"></div>
+
+            <div class="button-group">
+                <button id="analyzeBtn" class="btn-primary">▶️ 开始分析</button>
+                <button id="clearBtn" class="btn-secondary" style="display: none;">🔄 清除</button>
+            </div>
+        </div>
+
+        <div id="analysisSection" class="analysis-section" style="display: none;">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="selling">卖点分析</button>
+                <button class="tab-btn" data-tab="reviews">评价分布</button>
+                <button class="tab-btn" data-tab="parameters">参数对比</button>
+                <button class="tab-btn" data-tab="suggestions">建议</button>
+            </div>
+
+            <div id="selling" class="tab-content active"></div>
+            <div id="reviews" class="tab-content"></div>
+            <div id="parameters" class="tab-content"></div>
+            <div id="suggestions" class="tab-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let products = [];
+
+        document.getElementById('htmlFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            console.log('✅ 文件选择事件触发');
+            
+            if (!file) {
+                console.log('❌ 没有选择文件');
+                return;
             }
-          })
-        }
-      );
 
-      console.log('API 响应状态:', response.status);
+            console.log('📄 文件信息:', { name: file.name, size: file.size, type: file.type });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API 错误:', errorData);
-        return res.status(response.status).json({
-          error: `API 调用失败: ${errorData.message || '未知错误'}`
+            if (!file.type.includes('html') && !file.name.endsWith('.html')) {
+                showError('⚠️ 请选择 HTML 格式的文件');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                showError('⚠️ 文件过大（超过 10MB）');
+                return;
+            }
+
+            document.getElementById('fileName').textContent = `✅ ${file.name}`;
+            document.getElementById('fileName').style.display = 'inline';
+            clearMessage();
+            console.log('✅ 文件验证通过');
         });
-      }
 
-      const data = await response.json();
-      console.log('API 返回数据');
+        document.getElementById('analyzeBtn').addEventListener('click', () => {
+            console.log('🔘 点击分析按钮');
+            analyzeFile();
+        });
 
-      let content = data.output?.text || data.output?.content || data.choices?.[0]?.message?.content;
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            console.log('🔘 点击清除按钮');
+            products = [];
+            document.getElementById('htmlFile').value = '';
+            document.getElementById('productLink').value = '';
+            document.getElementById('fileName').style.display = 'none';
+            document.getElementById('analysisSection').style.display = 'none';
+            document.getElementById('clearBtn').style.display = 'none';
+            clearMessage();
+        });
 
-      if (!content) {
-        console.error('无法从 API 响应中提取内容');
-        return res.status(500).json({ error: '未获得有效的 AI 响应内容' });
-      }
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
 
-      let parsed;
-      try {
-        parsed = JSON.parse(content);
-        console.log('JSON 解析成功');
-      } catch (e) {
-        console.warn('直接 JSON 解析失败，尝试提取...');
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsed = JSON.parse(jsonMatch[0]);
-          console.log('JSON 提取成功');
-        } else {
-          console.error('JSON 提取失败:', content.substring(0, 200));
-          return res.status(500).json({ error: '无法解析 AI 返回的 JSON 格式' });
+        async function analyzeFile() {
+            const file = document.getElementById('htmlFile').files[0];
+            
+            if (!file) {
+                console.log('❌ 未选择文件');
+                showError('❌ 请先上传页面 HTML 文件');
+                return;
+            }
+
+            console.log('📖 开始读取文件...');
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('analyzeBtn').textContent = '⏳ 分析中...';
+            clearMessage();
+
+            try {
+                const htmlContent = await file.text();
+                console.log('✅ 文件读取完成，大小:', htmlContent.length, '字节');
+
+                if (!htmlContent || htmlContent.length < 100) {
+                    showError('❌ HTML 文件内容不足');
+                    return;
+                }
+
+                const productLink = document.getElementById('productLink').value;
+                console.log('📮 准备发送请求...');
+                console.log('   - htmlContent 长度:', htmlContent.length);
+                console.log('   - productLink:', productLink || '未提供');
+
+                const requestData = {
+                    htmlContent: htmlContent,
+                    productLink: productLink || '未提供',
+                    isHtmlMode: true
+                };
+
+                console.log('📤 发送 POST 请求到 /api/analyze');
+
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                console.log('📥 收到响应，状态码:', response.status);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.log('❌ API 错误:', errorData);
+                    throw new Error(errorData.error || `错误: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('✅ 解析成功，产品数量:', result.products?.length || 0);
+
+                if (!result.products || !Array.isArray(result.products)) {
+                    throw new Error('返回数据格式错误');
+                }
+
+                products = result.products;
+                renderResults();
+                document.getElementById('analysisSection').style.display = 'block';
+                document.getElementById('clearBtn').style.display = 'block';
+                showSuccess('✅ 分析成功！');
+
+            } catch (error) {
+                console.error('❌ 错误:', error.message);
+                showError(`❌ 分析失败: ${error.message}`);
+            } finally {
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('analyzeBtn').textContent = '▶️ 开始分析';
+            }
         }
-      }
 
-      if (!parsed.products || !Array.isArray(parsed.products)) {
-        parsed.products = parsed.products || [];
-      }
+        function renderResults() {
+            document.getElementById('selling').innerHTML = products.map((p) => `
+                <div class="product-card">
+                    <h3>${p.name || '产品'}</h3>
+                    <p><strong>类别：</strong> ${p.category || '未知'}</p>
+                    ${p.sellingPoints && p.sellingPoints.length > 0 ? `
+                        <strong>卖点：</strong>
+                        <ul>${p.sellingPoints.map(point => `<li>${point}</li>`).join('')}</ul>
+                    ` : '<p style="color: #999;">暂无卖点数据</p>'}
+                </div>
+            `).join('');
 
-      console.log('分析完成，返回结果');
-      return res.status(200).json(parsed);
+            document.getElementById('reviews').innerHTML = products.map((p) => {
+                const dist = p.reviews?.distribution || {};
+                return `
+                    <div class="product-card">
+                        <h3>${p.name || '产品'}</h3>
+                        <p><strong>总评价数：</strong> ${p.reviews?.totalCount || 0}</p>
+                        ${Object.keys(dist).length > 0 ? `
+                            <table>
+                                <tr>
+                                    <th>星级</th>
+                                    <th>数量</th>
+                                    <th>百分比</th>
+                                </tr>
+                                ${Object.entries(dist).map(([star, data]) => `
+                                    <tr>
+                                        <td>${star}</td>
+                                        <td>${data.count || 0}</td>
+                                        <td>${data.percentage || '0%'}</td>
+                                    </tr>
+                                `).join('')}
+                            </table>
+                        ` : '<p style="color: #999;">暂无评价数据</p>'}
+                    </div>
+                `;
+            }).join('');
 
-    } catch (error) {
-      console.error('服务器错误:', error.message);
-      return res.status(500).json({
-        error: `服务器错误: ${error.message}`
-      });
-    }
-  } else {
-    // 既不是 HTML 模式也没有提供链接
-    console.log('ERROR: 未检测到 HTML 模式且未提供链接');
-    console.log('isHtmlMode:', isHtmlMode, '| htmlContent:', htmlContent ? '有' : '无', '| links:', links);
-    return res.status(400).json({ 
-      error: '请上传页面 HTML 文件',
-      debug: {
-        isHtmlMode,
-        hasHtmlContent: !!htmlContent,
-        hasLinks: !!links
-      }
-    });
-  }
-}
+            if (products.length > 1) {
+                const allParams = new Set();
+                products.forEach(p => {
+                    if (p.parameters) Object.keys(p.parameters).forEach(param => allParams.add(param));
+                });
+
+                let tableHtml = `<table><thead><tr><th>参数</th>${products.map(p => `<th>${p.name || '产品'}</th>`).join('')}</tr></thead><tbody>`;
+                Array.from(allParams).forEach(param => {
+                    tableHtml += '<tr>';
+                    tableHtml += `<td><strong>${param}</strong></td>`;
+                    products.forEach(p => {
+                        const value = p.parameters?.[param] || '[无]';
+                        tableHtml += `<td>${value}</td>`;
+                    });
+                    tableHtml += '</tr>';
+                });
+                tableHtml += '</tbody></table>';
+                document.getElementById('parameters').innerHTML = tableHtml;
+            } else {
+                document.getElementById('parameters').innerHTML = '<div class="empty-message">需要至少 2 个产品进行对比</div>';
+            }
+
+            document.getElementById('suggestions').innerHTML = products[0]?.suggestions ? `<div class="product-card"><h3>💡 建议</h3><p>${products[0].suggestions}</p></div>` : '<div class="empty-message">暂无建议</div>';
+        }
+
+        function showError(msg) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = 'error';
+            messageDiv.textContent = msg;
+            messageDiv.style.display = 'block';
+        }
+
+        function showSuccess(msg) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = 'success';
+            messageDiv.textContent = msg;
+            messageDiv.style.display = 'block';
+        }
+
+        function clearMessage() {
+            document.getElementById('message').style.display = 'none';
+        }
+
+        console.log('✅ 页面初始化完成，等待用户操作...');
+    </script>
+</body>
+</html>

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产品链接卖点分析工具</title>
+    <style>
+        :root {
+            --color-primary: #2160A5;
+            --color-primary-hover: #1A4A7F;
+            --color-bg: #F5F7FA;
+            --color-surface: #FFFFFF;
+            --color-text: #1F2937;
+            --color-text-light: #6B7280;
+            --color-success: #10B981;
+            --color-warning: #F59E0B;
+            --color-error: #EF4444;
+            --color-border: #E5E7EB;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            background: var(--color-surface);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: var(--color-primary);
+        }
+
+        .subtitle {
+            color: var(--color-text-light);
+            font-size: 14px;
+        }
+
+        .input-section {
+            background: var(--color-surface);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--color-text);
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(33, 96, 165, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--color-primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(33, 96, 165, 0.2);
+        }
+
+        .btn-primary:disabled {
+            background: #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--color-border);
+            color: var(--color-text);
+        }
+
+        .btn-secondary:hover {
+            background: #D1D5DB;
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .result-card {
+            background: var(--color-surface);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border-left: 4px solid var(--color-primary);
+        }
+
+        .result-card h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: var(--color-primary);
+        }
+
+        .result-card h3 {
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            color: var(--color-text);
+        }
+
+        .selling-points {
+            list-style: none;
+        }
+
+        .selling-points li {
+            padding: 10px 0;
+            padding-left: 24px;
+            position: relative;
+            color: var(--color-text-light);
+            font-size: 14px;
+        }
+
+        .selling-points li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--color-success);
+            font-weight: bold;
+        }
+
+        .score-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #F0F9FF;
+            border-radius: 8px;
+            border: 1px solid #BEE3F8;
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 12px;
+        }
+
+        .score-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--color-border);
+            text-align: center;
+        }
+
+        .score-label {
+            font-size: 12px;
+            color: var(--color-text-light);
+            margin-bottom: 8px;
+        }
+
+        .score-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--color-primary);
+        }
+
+        .score-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--color-border);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            background: var(--color-success);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--color-border);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #FEE2E2;
+            border: 1px solid #FECACA;
+            color: var(--color-error);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        .warning {
+            background: #FFFBEB;
+            border: 1px solid #FEF08A;
+            color: var(--color-warning);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .tab-btn {
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--color-text-light);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--color-primary);
+            border-bottom-color: var(--color-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 22px;
+            }
+
+            .score-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛍️ AI 产品链接卖点分析工具</h1>
+            <p class="subtitle">输入产品链接或描述，AI 自动分析卖点并给出评分</p>
+        </header>
+
+        <div class="input-section">
+            <div class="form-group">
+                <label>产品链接或标题 *</label>
+                <input type="text" id="productLink" placeholder="粘贴产品链接或输入产品名称">
+            </div>
+
+            <div class="form-group">
+                <label>产品描述（可选）</label>
+                <textarea id="productDesc" placeholder="输入产品的更多描述信息..."></textarea>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" id="analyzeBtn" onclick="analyzeProduct()">开始分析</button>
+                <button class="btn-secondary" onclick="clearForm()">清除</button>
+            </div>
+
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="warning" class="warning" style="display: none;"></div>
+        </div>
+
+        <div class="results-section" id="results">
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="switchTab('sellingPoints')">卖点分析</button>
+                <button class="tab-btn" onclick="switchTab('scores')">评分详情</button>
+                <button class="tab-btn" onclick="switchTab('comparison')">优化建议</button>
+            </div>
+
+            <div id="sellingPoints" class="tab-content active">
+                <div class="result-card">
+                    <h2>产品核心卖点</h2>
+                    <ul class="selling-points" id="sellingPointsList">
+                        <li>加载中...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="scores" class="tab-content">
+                <div class="result-card">
+                    <h2>多维度评分</h2>
+                    <div class="score-section">
+                        <div class="score-grid">
+                            <div class="score-item">
+                                <div class="score-label">产品力评分</div>
+                                <div class="score-value" id="scoreProduct">0</div>
+                                <div class="score-bar">
+                                    <div class="score-bar-fill" id="barProduct"></div>
+                                </div>
+                            </div>
+                            <div class="score-item">
+                                <div class="score-label">卖点清晰度</div>
+                                <div class="score-value" id="scoreClarity">0</div>
+                                <div class="score-bar">
+                                    <div class="score-bar-fill" id="barClarity"></div>
+                                </div>
+                            </div>
+                            <div class="score-item">
+                                <div class="score-label">竞争力评分</div>
+                                <div class="score-value" id="scoreCompetitive">0</div>
+                                <div class="score-bar">
+                                    <div class="score-bar-fill" id="barCompetitive"></div>
+                                </div>
+                            </div>
+                            <div class="score-item">
+                                <div class="score-label">市场潜力</div>
+                                <div class="score-value" id="scorePotential">0</div>
+                                <div class="score-bar">
+                                    <div class="score-bar-fill" id="barPotential"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 style="margin-top: 20px;">评分解释</h3>
+                    <p id="scoreExplain" style="color: var(--color-text-light); font-size: 14px; line-height: 1.8;"></p>
+                </div>
+            </div>
+
+            <div id="comparison" class="tab-content">
+                <div class="result-card">
+                    <h2>优化建议</h2>
+                    <h3>💡 主要优势</h3>
+                    <ul class="selling-points" id="strengths">
+                        <li>加载中...</li>
+                    </ul>
+                    <h3>⚠️ 改进空间</h3>
+                    <ul class="selling-points" id="improvements">
+                        <li>加载中...</li>
+                    </ul>
+                    <h3>🎯 优化策略</h3>
+                    <div style="background: #FEFCE8; border: 1px solid #FEFDE8; padding: 15px; border-radius: 8px; margin-top: 12px;">
+                        <p id="strategy" style="color: var(--color-text); font-size: 14px; line-height: 1.8;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeProduct() {
+            const link = document.getElementById('productLink').value.trim();
+            const desc = document.getElementById('productDesc').value.trim();
+            const errorEl = document.getElementById('error');
+            const warningEl = document.getElementById('warning');
+            const resultsEl = document.getElementById('results');
+
+            errorEl.style.display = 'none';
+            warningEl.style.display = 'none';
+
+            if (!link) {
+                errorEl.textContent = '❌ 请输入产品链接或描述';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            resultsEl.classList.add('show');
+            updateLoadingState(true);
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        link: link,
+                        desc: desc 
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '分析失败');
+                }
+
+                const analysisResult = await response.json();
+
+                if (!analysisResult.sellingPoints || !analysisResult.scores) {
+                    throw new Error('AI 返回的数据格式不正确');
+                }
+
+                renderSellingPoints(analysisResult.sellingPoints);
+                renderScores(analysisResult.scores, analysisResult.scoreExplain);
+                renderOptimization(analysisResult.strengths, analysisResult.improvements, analysisResult.strategy);
+
+                warningEl.innerHTML = '✅ 分析完成！请查看各标签页的结果。';
+                warningEl.style.display = 'block';
+
+            } catch (error) {
+                errorEl.textContent = '❌ ' + error.message;
+                errorEl.style.display = 'block';
+            } finally {
+                updateLoadingState(false);
+            }
+        }
+
+        function renderSellingPoints(points) {
+            const list = document.getElementById('sellingPointsList');
+            list.innerHTML = points.map(point => `<li>${point}</li>`).join('');
+        }
+
+        function renderScores(scores, explain) {
+            const mapping = {
+                product: { el: 'scoreProduct', bar: 'barProduct' },
+                clarity: { el: 'scoreClarity', bar: 'barClarity' },
+                competitive: { el: 'scoreCompetitive', bar: 'barCompetitive' },
+                potential: { el: 'scorePotential', bar: 'barPotential' }
+            };
+
+            Object.entries(scores).forEach(([key, value]) => {
+                const config = mapping[key];
+                if (config) {
+                    const score = Math.min(10, Math.max(0, parseFloat(value) || 0));
+                    document.getElementById(config.el).textContent = score.toFixed(1);
+                    document.getElementById(config.bar).style.width = (score * 10) + '%';
+                }
+            });
+
+            document.getElementById('scoreExplain').textContent = explain || '评分分析中...';
+        }
+
+        function renderOptimization(strengths, improvements, strategy) {
+            document.getElementById('strengths').innerHTML = strengths.map(s => `<li>${s}</li>`).join('');
+            document.getElementById('improvements').innerHTML = improvements.map(i => `<li>${i}</li>`).join('');
+            document.getElementById('strategy').textContent = strategy;
+        }
+
+        function updateLoadingState(loading) {
+            const btn = document.getElementById('analyzeBtn');
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span> 分析中...';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '开始分析';
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function clearForm() {
+            document.getElementById('productLink').value = '';
+            document.getElementById('productDesc').value = '';
+            document.getElementById('results').classList.remove('show');
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('warning').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
